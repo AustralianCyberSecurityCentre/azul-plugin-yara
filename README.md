@@ -68,7 +68,7 @@ azul-plugin-yara-scan --server http://dispatcher-dev.azul.local -c yara_rules_pa
 
 ## Python Package management
 
-This python package is managed using a `setup.py` and `pyproject.toml` file.
+This python package is managed using a `pyproject.toml` file.
 
 Standardisation of installing and testing the python package is handled through tox.
 Tox commands include:
