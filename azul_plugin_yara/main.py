@@ -217,11 +217,14 @@ class AzulPluginYara(BinaryPlugin):
             self.add_info(info)
 
 
-def construct_yara_x_compiler(list_rules: dict[str, LiteralString | str | bytes], logger) -> yara_x.Compiler:
+def construct_yara_x_compiler(
+    list_rules: dict[str, LiteralString | str | bytes], logger: logging.Logger
+) -> yara_x.Compiler:
     """Constructs a yara_x compiler from the provided yara rules dict. Replaces includes for yara_x compatibility.
 
     Args:
         list_rules (dict[str, LiteralString  |  str  |  bytes]): Dict containing namespace and rule path
+        logger (Loggger): Logger for logging the progress of the compilation of the yara command.
 
     Returns:
         yara_x.Compiler: yara_x compiler
@@ -312,7 +315,7 @@ def read_bytes(filepath: str, offset: int, length: int) -> Optional[bytes]:
             data = file.read(length)
             return data
     except Exception as e:
-        raise Exception(f"An error occurred while reading bytes {e}")
+        raise Exception(f"An error occurred while reading bytes {e}") from e
 
 
 def replace_include(include, dirname, processed_files: set[str], cur_logger: logging.Logger):
