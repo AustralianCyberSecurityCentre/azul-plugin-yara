@@ -43,11 +43,11 @@ exclude-newer-package = { azul-bedrock = false, azul-runner = false, azul-securi
 
 [tool.uv.sources]
 azul-bedrock = { index="cache"}
-azul-runner = { index="cache" }
 azul-metastore = { index="cache"}
 azul-security = { index="cache"}
 azul-nsrl-lookup-server = { index="cache"}
 azul-plugin-retrohunt = { index="cache" }
+azul-runner = { url = "https://devpi.acsc.internal/azul/stable/+f/08d/12b164b4f9ace/azul_runner-11.0.43.dev1+g29e6a01e0-py3-none-any.whl" }
 
 [[tool.uv.index]]
 name = "pypi"
