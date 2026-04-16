@@ -23,7 +23,7 @@ Example Output:
 
 ```
 ----- AzulPluginYara results -----
-COMPLETED
+COMPLETED 
 
 events (1)
 
