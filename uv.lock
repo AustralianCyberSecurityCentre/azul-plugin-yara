@@ -8,7 +8,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-04-09T05:37:54.032850132Z"
+exclude-newer = "2026-04-08T06:11:22.648916866Z"
 exclude-newer-span = "P1W"
 
 [options.exclude-newer-package]
@@ -106,13 +106,13 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "azul-bedrock", specifier = ">=11.0.26", index = "https://devpi.acsc.internal/azul/stable/" },
-    { name = "azul-runner", url = "https://devpi.acsc.internal/azul/stable/+f/08d/12b164b4f9ace/azul_runner-11.0.43.dev1+g29e6a01e0-py3-none-any.whl" },
+    { name = "azul-runner", specifier = ">=9.0.38", index = "https://devpi.acsc.internal/azul/stable/" },
     { name = "yara-x", specifier = ">=1.12.0" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "azul-runner", extras = ["test-utils"], url = "https://devpi.acsc.internal/azul/stable/+f/08d/12b164b4f9ace/azul_runner-11.0.43.dev1+g29e6a01e0-py3-none-any.whl" },
+    { name = "azul-runner", extras = ["test-utils"], specifier = ">=9.0.38", index = "https://devpi.acsc.internal/azul/stable/" },
     { name = "cart", specifier = ">=1.2.3" },
     { name = "pytest", specifier = ">=9.0.2" },
     { name = "ruff", specifier = ">=0.15.8" },
@@ -122,8 +122,8 @@ dev = [
 
 [[package]]
 name = "azul-runner"
-version = "11.0.43.dev1+g29e6a01e0"
-source = { url = "https://devpi.acsc.internal/azul/stable/+f/08d/12b164b4f9ace/azul_runner-11.0.43.dev1+g29e6a01e0-py3-none-any.whl" }
+version = "11.0.33"
+source = { registry = "https://devpi.acsc.internal/azul/stable/" }
 dependencies = [
     { name = "azul-bedrock" },
     { name = "bitarray" },
@@ -135,7 +135,7 @@ dependencies = [
     { name = "watchdog" },
 ]
 wheels = [
-    { url = "https://devpi.acsc.internal/azul/stable/+f/08d/12b164b4f9ace/azul_runner-11.0.43.dev1+g29e6a01e0-py3-none-any.whl", hash = "sha256:08d12b164b4f9aceea9183c7e0973e1aa7cd227eddf01d1c70f5450dbc69d87b" },
+    { url = "https://devpi.acsc.internal/azul/stable/+f/aa1/690175d83a10a/azul_runner-11.0.33-py3-none-any.whl", hash = "sha256:aa1690175d83a10ad9e81a441f79736cddfc622e1d18f2b1471c50a2e09a30e6" },
 ]
 
 [package.optional-dependencies]
@@ -149,27 +149,6 @@ test-utils = [
     { name = "uvicorn", extra = ["standard"] },
     { name = "yara-x" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "azul-bedrock", specifier = ">=9.0.32" },
-    { name = "azul-bedrock", extras = ["test-utils"], marker = "extra == 'test-utils'" },
-    { name = "bitarray", specifier = ">=0.9" },
-    { name = "black", marker = "extra == 'test-utils'" },
-    { name = "cart", specifier = ">=1.2.3" },
-    { name = "fastapi", marker = "extra == 'test-utils'" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "psutil", specifier = ">=7.2.2" },
-    { name = "pydantic", specifier = ">2" },
-    { name = "pydantic-settings", specifier = ">=2.12.0" },
-    { name = "pytest", marker = "extra == 'test-utils'" },
-    { name = "pytest-timeout", marker = "extra == 'test-utils'" },
-    { name = "urllib3", marker = "extra == 'test-utils'" },
-    { name = "uvicorn", extras = ["standard"], marker = "extra == 'test-utils'" },
-    { name = "watchdog", specifier = ">=6.0.0" },
-    { name = "yara-x", marker = "extra == 'test-utils'" },
-]
-provides-extras = ["test-utils"]
 
 [[package]]
 name = "azure-core"
