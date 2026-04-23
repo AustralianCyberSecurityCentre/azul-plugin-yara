@@ -365,9 +365,7 @@ class TestYara(test_template.TestPlugin):
         )
         self.assertJobResult(result, JobResult(state=State(State.Label.COMPLETED_EMPTY)))
 
-    def template_importing_rules_directory(
-        self, regex: str | list[str], expected_result_override: JobResult | None = None
-    ):
+    def template_importing_rules_directory(self, regex: str | list[str], is_expected_result_alt: bool = False):
         """Test the case where rules are all imported from a single file."""
         # Expect many hits
         result = self.do_execution(
@@ -424,8 +422,44 @@ class TestYara(test_template.TestPlugin):
             },
         )
 
-        if expected_result_override:
-            expected_result = expected_result_override
+        if is_expected_result_alt:
+            expected_result = JobResult(
+                state=State(State.Label.COMPLETED),
+                events=[
+                    Event(
+                        sha256="78f18b9256b3dc9f268fce4b4d20f32329687da45b60fc96ac685ccb221b22aa",
+                        data=[
+                            EventData(
+                                hash="24ee3c6317bd15c42b504fbbd2c3109b2c8e1e1839e0b3ff2c53b9d5c54d0a4c",
+                                label="yara_rule_hit",
+                            ),
+                            EventData(
+                                hash="8d7b5d6962a4757d515e9902fca4e91b56b7b80290f577b2696a33985ec7efdb",
+                                label="yara_rule_hit",
+                            ),
+                            EventData(
+                                hash="6e1cdbbabaeff13954b87e30065bcc3da12f4ab7b38a798539e1c6d5466e3a36",
+                                label="yara_rule_hit",
+                            ),
+                        ],
+                        features={
+                            "yararule": [
+                                FV("exploits.check_filename.test_extension"),
+                                FV("exploits.check_filename.test_filename"),
+                                FV("exploits.check_filename.test_filepath"),
+                                FV("exploits.includes.test_extension"),
+                                FV("exploits.includes.test_filename"),
+                                FV("exploits.includes.test_filepath"),
+                            ]
+                        },
+                    )
+                ],
+                data={
+                    "24ee3c6317bd15c42b504fbbd2c3109b2c8e1e1839e0b3ff2c53b9d5c54d0a4c": b'// plugin: Yara-00, namespace_identifier: exploits.check_filename.test_filename\nrule test_filename\n{\ncondition:\n    filename startswith "test.exe"\n}\n',
+                    "8d7b5d6962a4757d515e9902fca4e91b56b7b80290f577b2696a33985ec7efdb": b'// plugin: Yara-00, namespace_identifier: exploits.check_filename.test_filepath\nrule test_filepath\n{\ncondition:\n    filepath startswith "/blah/"\n}\n',
+                    "6e1cdbbabaeff13954b87e30065bcc3da12f4ab7b38a798539e1c6d5466e3a36": b'// plugin: Yara-00, namespace_identifier: exploits.check_filename.test_extension\nrule test_extension\n{\ncondition:\n    extension startswith "exe"\n}\n',
+                },
+            )
 
         self.assertJobResult(
             result,
@@ -439,61 +473,7 @@ class TestYara(test_template.TestPlugin):
 
     def test_import_rules_multi_list_regex(self):
         """Test list of regex."""
-        self.template_importing_rules_directory(
-            ["include.*", "check.*"],
-            JobResult(
-                state=State(State.Label.COMPLETED),
-                events=[
-                    Event(
-                        sha256="78f18b9256b3dc9f268fce4b4d20f32329687da45b60fc96ac685ccb221b22aa",
-                        data=[
-                            EventData(
-                                hash="24ee3c6317bd15c42b504fbbd2c3109b2c8e1e1839e0b3ff2c53b9d5c54d0a4c",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="8d7b5d6962a4757d515e9902fca4e91b56b7b80290f577b2696a33985ec7efdb",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="6e1cdbbabaeff13954b87e30065bcc3da12f4ab7b38a798539e1c6d5466e3a36",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="f37fadf6057d817256344225d2744dc8487616f6761e839e0ecd4bb16d5c5417",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="b98528ea5fbf29f9cb784a02a900f2c00ad0353f6ab5f95b993dcb4f762b6e88",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="6391287b9565b6fdfcbd160508070912bf1f3064d286e4f95a1cf3ed7881a186",
-                                label="yara_rule_hit",
-                            ),
-                        ],
-                        features={
-                            "yararule": [
-                                FV("exploits.check_filename.test_extension"),
-                                FV("exploits.check_filename.test_filename"),
-                                FV("exploits.check_filename.test_filepath"),
-                                FV("exploits.includes.test_extension"),
-                                FV("exploits.includes.test_filename"),
-                                FV("exploits.includes.test_filepath"),
-                            ]
-                        },
-                    )
-                ],
-                data={
-                    "24ee3c6317bd15c42b504fbbd2c3109b2c8e1e1839e0b3ff2c53b9d5c54d0a4c": b'// plugin: Yara-00, namespace_identifier: exploits.check_filename.test_filename\nrule test_filename\n{\ncondition:\n    filename startswith "test.exe"\n}\n',
-                    "8d7b5d6962a4757d515e9902fca4e91b56b7b80290f577b2696a33985ec7efdb": b'// plugin: Yara-00, namespace_identifier: exploits.check_filename.test_filepath\nrule test_filepath\n{\ncondition:\n    filepath startswith "/blah/"\n}\n',
-                    "6e1cdbbabaeff13954b87e30065bcc3da12f4ab7b38a798539e1c6d5466e3a36": b'// plugin: Yara-00, namespace_identifier: exploits.check_filename.test_extension\nrule test_extension\n{\ncondition:\n    extension startswith "exe"\n}\n',
-                    "f37fadf6057d817256344225d2744dc8487616f6761e839e0ecd4bb16d5c5417": b'// plugin: Yara-00, namespace_identifier: exploits.includes.test_filename\nrule test_filename\n{\ncondition:\n    filename startswith "test.exe"\n}\n',
-                    "b98528ea5fbf29f9cb784a02a900f2c00ad0353f6ab5f95b993dcb4f762b6e88": b'// plugin: Yara-00, namespace_identifier: exploits.includes.test_filepath\nrule test_filepath\n{\ncondition:\n    filepath startswith "/blah/"\n}\n',
-                    "6391287b9565b6fdfcbd160508070912bf1f3064d286e4f95a1cf3ed7881a186": b'// plugin: Yara-00, namespace_identifier: exploits.includes.test_extension\nrule test_extension\n{\ncondition:\n    extension startswith "exe"\n}\n',
-                },
-            ),
-        )
+        self.template_importing_rules_directory(["include.*", "check.*"], is_expected_result_alt=True)
 
     def test_import_rules_string_regex(self):
         """Test string regex."""
@@ -501,116 +481,8 @@ class TestYara(test_template.TestPlugin):
 
     def test_import_rules_regex_wide(self):
         """Test too wide regex."""
-        self.template_importing_rules_directory(
-            [".*"],
-            JobResult(
-                state=State(State.Label.COMPLETED),
-                events=[
-                    Event(
-                        sha256="78f18b9256b3dc9f268fce4b4d20f32329687da45b60fc96ac685ccb221b22aa",
-                        data=[
-                            EventData(
-                                hash="24ee3c6317bd15c42b504fbbd2c3109b2c8e1e1839e0b3ff2c53b9d5c54d0a4c",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="8d7b5d6962a4757d515e9902fca4e91b56b7b80290f577b2696a33985ec7efdb",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="6e1cdbbabaeff13954b87e30065bcc3da12f4ab7b38a798539e1c6d5466e3a36",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="f37fadf6057d817256344225d2744dc8487616f6761e839e0ecd4bb16d5c5417",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="b98528ea5fbf29f9cb784a02a900f2c00ad0353f6ab5f95b993dcb4f762b6e88",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="6391287b9565b6fdfcbd160508070912bf1f3064d286e4f95a1cf3ed7881a186",
-                                label="yara_rule_hit",
-                            ),
-                        ],
-                        features={
-                            "yararule": [
-                                FV("exploits.check_filename.test_extension"),
-                                FV("exploits.check_filename.test_filename"),
-                                FV("exploits.check_filename.test_filepath"),
-                                FV("exploits.includes.test_extension"),
-                                FV("exploits.includes.test_filename"),
-                                FV("exploits.includes.test_filepath"),
-                            ]
-                        },
-                    )
-                ],
-                data={
-                    "24ee3c6317bd15c42b504fbbd2c3109b2c8e1e1839e0b3ff2c53b9d5c54d0a4c": b'// plugin: Yara-00, namespace_identifier: exploits.check_filename.test_filename\nrule test_filename\n{\ncondition:\n    filename startswith "test.exe"\n}\n',
-                    "8d7b5d6962a4757d515e9902fca4e91b56b7b80290f577b2696a33985ec7efdb": b'// plugin: Yara-00, namespace_identifier: exploits.check_filename.test_filepath\nrule test_filepath\n{\ncondition:\n    filepath startswith "/blah/"\n}\n',
-                    "6e1cdbbabaeff13954b87e30065bcc3da12f4ab7b38a798539e1c6d5466e3a36": b'// plugin: Yara-00, namespace_identifier: exploits.check_filename.test_extension\nrule test_extension\n{\ncondition:\n    extension startswith "exe"\n}\n',
-                    "f37fadf6057d817256344225d2744dc8487616f6761e839e0ecd4bb16d5c5417": b'// plugin: Yara-00, namespace_identifier: exploits.includes.test_filename\nrule test_filename\n{\ncondition:\n    filename startswith "test.exe"\n}\n',
-                    "b98528ea5fbf29f9cb784a02a900f2c00ad0353f6ab5f95b993dcb4f762b6e88": b'// plugin: Yara-00, namespace_identifier: exploits.includes.test_filepath\nrule test_filepath\n{\ncondition:\n    filepath startswith "/blah/"\n}\n',
-                    "6391287b9565b6fdfcbd160508070912bf1f3064d286e4f95a1cf3ed7881a186": b'// plugin: Yara-00, namespace_identifier: exploits.includes.test_extension\nrule test_extension\n{\ncondition:\n    extension startswith "exe"\n}\n',
-                },
-            ),
-        )
+        self.template_importing_rules_directory([".*"], is_expected_result_alt=True)
 
     def test_import_rules_no_regex(self):
         """Test too wide regex."""
-        self.template_importing_rules_directory(
-            [],
-            JobResult(
-                state=State(State.Label.COMPLETED),
-                events=[
-                    Event(
-                        sha256="78f18b9256b3dc9f268fce4b4d20f32329687da45b60fc96ac685ccb221b22aa",
-                        data=[
-                            EventData(
-                                hash="24ee3c6317bd15c42b504fbbd2c3109b2c8e1e1839e0b3ff2c53b9d5c54d0a4c",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="8d7b5d6962a4757d515e9902fca4e91b56b7b80290f577b2696a33985ec7efdb",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="6e1cdbbabaeff13954b87e30065bcc3da12f4ab7b38a798539e1c6d5466e3a36",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="f37fadf6057d817256344225d2744dc8487616f6761e839e0ecd4bb16d5c5417",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="b98528ea5fbf29f9cb784a02a900f2c00ad0353f6ab5f95b993dcb4f762b6e88",
-                                label="yara_rule_hit",
-                            ),
-                            EventData(
-                                hash="6391287b9565b6fdfcbd160508070912bf1f3064d286e4f95a1cf3ed7881a186",
-                                label="yara_rule_hit",
-                            ),
-                        ],
-                        features={
-                            "yararule": [
-                                FV("exploits.check_filename.test_extension"),
-                                FV("exploits.check_filename.test_filename"),
-                                FV("exploits.check_filename.test_filepath"),
-                                FV("exploits.includes.test_extension"),
-                                FV("exploits.includes.test_filename"),
-                                FV("exploits.includes.test_filepath"),
-                            ]
-                        },
-                    )
-                ],
-                data={
-                    "24ee3c6317bd15c42b504fbbd2c3109b2c8e1e1839e0b3ff2c53b9d5c54d0a4c": b'// plugin: Yara-00, namespace_identifier: exploits.check_filename.test_filename\nrule test_filename\n{\ncondition:\n    filename startswith "test.exe"\n}\n',
-                    "8d7b5d6962a4757d515e9902fca4e91b56b7b80290f577b2696a33985ec7efdb": b'// plugin: Yara-00, namespace_identifier: exploits.check_filename.test_filepath\nrule test_filepath\n{\ncondition:\n    filepath startswith "/blah/"\n}\n',
-                    "6e1cdbbabaeff13954b87e30065bcc3da12f4ab7b38a798539e1c6d5466e3a36": b'// plugin: Yara-00, namespace_identifier: exploits.check_filename.test_extension\nrule test_extension\n{\ncondition:\n    extension startswith "exe"\n}\n',
-                    "f37fadf6057d817256344225d2744dc8487616f6761e839e0ecd4bb16d5c5417": b'// plugin: Yara-00, namespace_identifier: exploits.includes.test_filename\nrule test_filename\n{\ncondition:\n    filename startswith "test.exe"\n}\n',
-                    "b98528ea5fbf29f9cb784a02a900f2c00ad0353f6ab5f95b993dcb4f762b6e88": b'// plugin: Yara-00, namespace_identifier: exploits.includes.test_filepath\nrule test_filepath\n{\ncondition:\n    filepath startswith "/blah/"\n}\n',
-                    "6391287b9565b6fdfcbd160508070912bf1f3064d286e4f95a1cf3ed7881a186": b'// plugin: Yara-00, namespace_identifier: exploits.includes.test_extension\nrule test_extension\n{\ncondition:\n    extension startswith "exe"\n}\n',
-                },
-            ),
-        )
+        self.template_importing_rules_directory([], is_expected_result_alt=True)

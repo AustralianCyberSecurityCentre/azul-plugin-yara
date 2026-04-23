@@ -5,6 +5,7 @@ import io
 import logging
 import os
 import re
+from hashlib import md5
 from pathlib import Path
 from typing import Any, Optional
 
@@ -157,7 +158,7 @@ class AzulPluginYara(BinaryPlugin):
         # Get yararule features.
         names = set()  # Use a set to avoid possible duplicate (rule, var) results if it hits more than once
         match_tuples = []
-
+        seen_rules_md5s = []
         # Read file from disk as multiple seek/read operations will be required
         fpath = job.get_data().get_filepath()
         for match in matches.matching_rules:
@@ -169,10 +170,14 @@ class AzulPluginYara(BinaryPlugin):
             self.yara_include_depth = 0
             raw_rule = self.fetch_original_rule(rule_file_path, match.identifier, self.logger)
             if len(raw_rule) > 0:
-                raw_rule_with_header = (
-                    f"// plugin: {self.NAME}{self.cfg.name_suffix}, namespace_identifier: {rule}\n".encode() + raw_rule
-                )
-                self.add_data(label=DataLabel.YARA_RULE_HIT, tags={}, data=raw_rule_with_header)
+                new_rule = md5(raw_rule).hexdigest()  # noqa: S324
+                if new_rule not in seen_rules_md5s:
+                    seen_rules_md5s.append(new_rule)
+                    raw_rule_with_header = (
+                        f"// plugin: {self.NAME}{self.cfg.name_suffix}, namespace_identifier: {rule}\n".encode()
+                        + raw_rule
+                    )
+                    self.add_data(label=DataLabel.YARA_RULE_HIT, tags={}, data=raw_rule_with_header)
 
             for match_data in match.patterns:
                 var = match_data.identifier
