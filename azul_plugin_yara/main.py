@@ -28,7 +28,7 @@ YARA_EXTENSIONS = [".yar", ".yara"]
 class AzulPluginYara(BinaryPlugin):
     """Uses yara-x and a configurable ruleset to publish signature hits as AZUL features."""
 
-    VERSION = "2026.04.23"
+    VERSION = "2026.04.24"
     CONTACT = "ASD's ACSC"
     SETTINGS = add_settings(
         filter_max_content_size="0",  # operate on any sized file
@@ -169,7 +169,10 @@ class AzulPluginYara(BinaryPlugin):
             self.yara_include_depth = 0
             raw_rule = self.fetch_original_rule(rule_file_path, match.identifier, self.logger)
             if len(raw_rule) > 0:
-                self.add_data(label=DataLabel.YARA_RULE_HIT, tags={}, data=raw_rule)
+                raw_rule_with_header = (
+                    f"// plugin: {self.NAME}{self.cfg.name_suffix}, namespace_identifier: {rule}\n".encode() + raw_rule
+                )
+                self.add_data(label=DataLabel.YARA_RULE_HIT, tags={}, data=raw_rule_with_header)
 
             for match_data in match.patterns:
                 var = match_data.identifier
