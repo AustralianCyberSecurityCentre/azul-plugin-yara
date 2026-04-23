@@ -1,15 +1,18 @@
 """Uses yara-x and a configurable ruleset to publish signature hits as AZUL features."""
 
 import base64
+import io
 import logging
 import os
 import re
-from typing import Any, LiteralString, Optional
+from pathlib import Path
+from typing import Any, Optional
 
 import yara_x
 from azul_runner import (
     FV,
     BinaryPlugin,
+    DataLabel,
     Feature,
     FeatureType,
     Job,
@@ -19,11 +22,13 @@ from azul_runner import (
     settings,
 )
 
+YARA_EXTENSIONS = [".yar", ".yara"]
+
 
 class AzulPluginYara(BinaryPlugin):
     """Uses yara-x and a configurable ruleset to publish signature hits as AZUL features."""
 
-    VERSION = "2025.03.21"
+    VERSION = "2026.04.23"
     CONTACT = "ASD's ACSC"
     SETTINGS = add_settings(
         filter_max_content_size="0",  # operate on any sized file
@@ -34,6 +39,8 @@ class AzulPluginYara(BinaryPlugin):
         # Still will only load .yar or .yara files.
         yara_only_load_files_named=(list[str] | str, []),
         size_before_disk=(int, 2**24),
+        # Max number of yara includes to follow before giving up on looking for rules.
+        max_yara_include_depth=(int, 5),
     )
 
     FEATURES = [
@@ -106,16 +113,18 @@ class AzulPluginYara(BinaryPlugin):
         else:
             yara_file_to_load_regex = None
 
-        rules = list_rules(self.cfg.yara_rules_path, blacklist, yara_file_to_load_regex)
-        if not rules:
+        self.namespace_to_rule_path: dict[str, str] = list_rules(
+            self.cfg.yara_rules_path, blacklist, yara_file_to_load_regex
+        )
+        if not self.namespace_to_rule_path:
             raise Exception("No yara rules found in %s path" % self.cfg.yara_rules_path)
 
-        self.logger.info(f"Loaded {len(rules)} files containing yara rules.")
-        if len(rules) < 20:
-            for namespace, path in rules.items():
+        self.logger.info(f"Loaded {len(self.namespace_to_rule_path)} files containing yara rules.")
+        if len(self.namespace_to_rule_path) < 20:
+            for namespace, path in self.namespace_to_rule_path.items():
                 self.logger.info(f"Loaded rules from the file namespace: '{namespace}', path: '{path}'")
         # Create a yara_x compiler
-        compiler = construct_yara_x_compiler(rules, self.logger)
+        compiler = construct_yara_x_compiler(self.namespace_to_rule_path, self.logger)
         self._cached_rules = compiler.build()
 
     def execute(self, job: Job):
@@ -146,23 +155,22 @@ class AzulPluginYara(BinaryPlugin):
             return State.Label.COMPLETED
 
         # Get yararule features.
-        yararule = []
         names = set()  # Use a set to avoid possible duplicate (rule, var) results if it hits more than once
-        attribution = []
-        implants = []
-        techniques = []
-        exploits = []
-        descriptions = []
-        references = []
-        tags = []
         match_tuples = []
 
         # Read file from disk as multiple seek/read operations will be required
         fpath = job.get_data().get_filepath()
-
         for match in matches.matching_rules:
             rule = match.namespace + "." + match.identifier
-            yararule.append(rule)
+            self.add_feature_values("yararule", rule)
+
+            # Find the raw rule and save it as a file
+            rule_file_path = self.namespace_to_rule_path[match.namespace]
+            self.yara_include_depth = 0
+            raw_rule = self.fetch_original_rule(rule_file_path, match.identifier, self.logger)
+            if len(raw_rule) > 0:
+                self.add_data(label=DataLabel.YARA_RULE_HIT, tags={}, data=raw_rule)
+
             for match_data in match.patterns:
                 var = match_data.identifier
                 for match_instance in match_data.matches:
@@ -176,37 +184,35 @@ class AzulPluginYara(BinaryPlugin):
 
             meta_dict = dict(match.metadata)
             if "attribution" in meta_dict:
-                attribution.extend([s.strip() for s in meta_dict["attribution"].split(",") if s.strip()])
+                self.add_feature_values(
+                    "yararule_attribution", [s.strip() for s in meta_dict["attribution"].split(",") if s.strip()]
+                )
             if "implant" in meta_dict:
-                implants.extend([s.strip() for s in meta_dict["implant"].split(",") if s.strip()])
+                self.add_feature_values(
+                    "yararule_implant", [s.strip() for s in meta_dict["implant"].split(",") if s.strip()]
+                )
             if "technique" in meta_dict:
-                techniques.extend([a.strip() for a in meta_dict["technique"].split(",") if a.strip()])
+                self.add_feature_values(
+                    "yararule_technique", [a.strip() for a in meta_dict["technique"].split(",") if a.strip()]
+                )
             if "exploit" in meta_dict:
-                exploits.extend([a.strip() for a in meta_dict["exploit"].split(",") if a.strip()])
+                self.add_feature_values(
+                    "yararule_exploit", [a.strip() for a in meta_dict["exploit"].split(",") if a.strip()]
+                )
             if "reference" in meta_dict:
-                references.append(FV(meta_dict["reference"], label=rule))
+                self.add_feature_values("yararule_reference", FV(meta_dict["reference"], label=rule))
             if "description" in meta_dict:
-                descriptions.append(FV(meta_dict["description"], label=rule))
+                self.add_feature_values("yararule_description", FV(meta_dict["description"], label=rule))
 
             for tag in match.tags:
-                tags.append(tag)
+                self.add_feature_values("yararule_tag", tag)
 
-        self.add_many_feature_values(
-            {
-                "yararule": yararule,
-                "yararule_match": [
-                    FV(val, label=rule, offset=offset, size=len(val)) for rule, offset, _, val in match_tuples
-                ],
-                "yararule_match_name": names,
-                "yararule_attribution": attribution,
-                "yararule_description": descriptions,
-                "yararule_reference": references,
-                "yararule_implant": implants,
-                "yararule_exploit": exploits,
-                "yararule_technique": techniques,
-                "yararule_tag": tags,
-            }
+        self.add_feature_values("yararule_match_name", names)
+        self.add_feature_values(
+            "yararule_match",
+            [FV(val, label=rule, offset=offset, size=len(val)) for rule, offset, _, val in match_tuples],
         )
+
         if match_tuples:
             info = {
                 "matches_key": ["rule", "offset", "var", "value"],
@@ -216,14 +222,86 @@ class AzulPluginYara(BinaryPlugin):
             info["matches"] = [[r, o, n, base64.b64encode(v).decode("ascii")] for (r, o, n, v) in match_tuples]
             self.add_info(info)
 
+        # TODO complete with errors if no original rule found
+        # return State(State.Label.COMPLETED_WITH_ERRORS, message=e.args[0])
 
-def construct_yara_x_compiler(
-    list_rules: dict[str, LiteralString | str | bytes], logger: logging.Logger
-) -> yara_x.Compiler:
+    def _make_path_absolute(self, parent_rule_path: str, path_str: str) -> Path:
+        """Create an absolute path from a relative or absolute path from a yara include."""
+        path = Path(path_str)
+        # Handle absolute path
+        if path.is_absolute():
+            return path.resolve()
+
+        # Handle relative path
+        parent_path = Path(parent_rule_path).parent
+        # resolve relative to parent path
+        path = (parent_path / path).resolve()
+        return path
+
+    def fetch_original_rule(self, rule_path: str, rule_identifier: str, logger: logging.Logger) -> bytes:
+        """A basic yara rule parser that can load the original rule from disk."""
+        if not os.path.exists(rule_path):
+            logger.warning(f"Could not load rule path '{rule_path}' for rule {rule_identifier} and it should exist.")
+            return b""
+
+        # Regex rules for finding start and end of yara rule.
+        rule_pattern = rb"rule\s" + rule_identifier.encode()
+        open_curly_brace_pattern = rb"(?<!\\)(?:\\\\)*\{"
+        closed_curly_brace_pattern = rb"(?<!\\)(?:\\\\)*\}"
+        regex_open_curly_brace = re.compile(open_curly_brace_pattern)
+        regex_closed_curly_brace = re.compile(closed_curly_brace_pattern)
+        regex_start_of_rule = re.compile(rule_pattern)
+
+        external_inclusion_path = rb"^\s*include\s*\"(.*)\"\s*$"
+        regex_external_inclusion = re.compile(external_inclusion_path)
+
+        included_yara_rule_paths: list[Path] = []
+        # output full raw rule.
+        output = io.BytesIO()
+        start_of_rule = False
+        at_least_one_brace_found = False
+        with open(rule_path, "rb") as f:
+            open_curly_brace = 0
+            while line := f.readline():
+                if include_match := regex_external_inclusion.search(line):
+                    included_yara_rule_paths.append(
+                        self._make_path_absolute(rule_path, include_match.group(1).decode())
+                    )
+                if start_of_rule or regex_start_of_rule.search(line):
+                    start_of_rule = True
+                    output.write(line)
+                    # Count braces
+                    open_curly_brace += len(regex_open_curly_brace.findall(line))
+                    if open_curly_brace > 0:
+                        at_least_one_brace_found = True
+                    open_curly_brace -= len(regex_closed_curly_brace.findall(line))
+                    if open_curly_brace == 0 and at_least_one_brace_found:
+                        break
+
+        # If no rule was found check if the rule is somewhere in the included paths.
+        if not start_of_rule:
+            # Ensure recursive yara includes don't end in an infinite loop
+            self.yara_include_depth += 1
+            if self.yara_include_depth >= self.cfg.max_yara_include_depth:
+                return b""
+            # Search included yara files.
+            for included_path in included_yara_rule_paths:
+                inner_output = self.fetch_original_rule(str(included_path), rule_identifier, logger)
+                if len(inner_output) > 0:
+                    return inner_output
+
+            logger.warning(f"Could not find the rule '{rule_identifier}' while searching the file '{rule_path}'")
+            return b""
+
+        output.seek(0)
+        return output.read()
+
+
+def construct_yara_x_compiler(list_rules: dict[str, str], logger: logging.Logger) -> yara_x.Compiler:
     """Constructs a yara_x compiler from the provided yara rules dict. Replaces includes for yara_x compatibility.
 
     Args:
-        list_rules (dict[str, LiteralString  |  str  |  bytes]): Dict containing namespace and rule path
+        list_rules (dict[str, str]): Dict containing namespace and rule path
         logger (Loggger): Logger for logging the progress of the compilation of the yara command.
 
     Returns:
@@ -255,7 +333,9 @@ def construct_yara_x_compiler(
     return compiler
 
 
-def list_rules(root, blacklist=None, yara_file_to_load_regex: list[re.Pattern[Any]] | None = None):
+def list_rules(
+    root: str, blacklist: list[str] | None = None, yara_file_to_load_regex: list[re.Pattern[Any]] | None = None
+) -> dict[str, str]:
     """Fetch a dictionary of rule filenames by recursively walking the root.
 
     :param root: Root of rule directory to scan/load.
@@ -269,14 +349,14 @@ def list_rules(root, blacklist=None, yara_file_to_load_regex: list[re.Pattern[An
     if not rootpath.endswith(os.path.sep):
         rootpath = rootpath + os.path.sep
 
-    paths = {}
+    paths: dict[str, str] = {}
     for path, _, names in os.walk(rootpath):
         relative_path = path[len(rootpath) :]
         namespace_base = ".".join(relative_path.split(os.path.sep))
 
         for filename in names:
             name, ext = os.path.splitext(filename)
-            if ext not in (".yar", ".yara"):
+            if ext not in YARA_EXTENSIONS:
                 continue
 
             # Only load files that match the provided regex.
