@@ -174,8 +174,7 @@ class AzulPluginYara(BinaryPlugin):
                 if new_rule not in seen_rules_md5s:
                     seen_rules_md5s.append(new_rule)
                     raw_rule_with_header = (
-                        f"// plugin: {self.NAME}{self.cfg.name_suffix}, namespace_identifier: {rule}\n".encode()
-                        + raw_rule
+                        f"// plugin: {self.NAME}, namespace_identifier: {rule}\n".encode() + raw_rule
                     )
                     self.add_data(label=DataLabel.YARA_RULE_HIT, tags={}, data=raw_rule_with_header)
 
