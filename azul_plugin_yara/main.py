@@ -29,7 +29,7 @@ YARA_EXTENSIONS = [".yar", ".yara"]
 class AzulPluginYara(BinaryPlugin):
     """Uses yara-x and a configurable ruleset to publish signature hits as AZUL features."""
 
-    VERSION = "2026.04.24"
+    VERSION = "2026.04.25"
     CONTACT = "ASD's ACSC"
     SETTINGS = add_settings(
         filter_max_content_size="0",  # operate on any sized file
