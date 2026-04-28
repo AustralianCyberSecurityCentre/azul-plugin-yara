@@ -161,10 +161,11 @@ class AzulPluginYara(BinaryPlugin):
         seen_rules_md5s = []
         # Read file from disk as multiple seek/read operations will be required
         fpath = job.get_data().get_filepath()
-        found_raw_rule = False
+        found_raw_rule = dict()
         for match in matches.matching_rules:
             rule = match.namespace + "." + match.identifier
             self.add_feature_values("yararule", rule)
+            found_raw_rule[rule] = False
 
             # Find the raw rule and save it as a file
             rule_file_path = self.namespace_to_rule_path[match.namespace]
@@ -172,13 +173,14 @@ class AzulPluginYara(BinaryPlugin):
             raw_rule = self.fetch_original_rule(rule_file_path, match.identifier, self.logger)
             if len(raw_rule) > 0:
                 new_rule = md5(raw_rule).hexdigest()  # noqa: S324
+                # Rule was found
+                found_raw_rule[rule] = True
                 if new_rule not in seen_rules_md5s:
                     seen_rules_md5s.append(new_rule)
                     raw_rule_with_header = (
                         f"// plugin: {self.NAME}, namespace_identifier: {rule}\n".encode() + raw_rule
                     )
                     self.add_data(label=DataLabel.YARA_RULE_HIT, tags={}, data=raw_rule_with_header)
-                    found_raw_rule = True
 
             for match_data in match.patterns:
                 var = match_data.identifier
@@ -231,10 +233,15 @@ class AzulPluginYara(BinaryPlugin):
             info["matches"] = [[r, o, n, base64.b64encode(v).decode("ascii")] for (r, o, n, v) in match_tuples]
             self.add_info(info)
 
-        if not found_raw_rule:
+        if not all(found_raw_rule.values()):
+            missing_rules = []
+            for rule, was_found in found_raw_rule.items():
+                if not was_found:
+                    missing_rules.append(rule)
+
             return State(
                 State.Label.COMPLETED_WITH_ERRORS,
-                message="failed to find a raw yara rule due to pathing issues, refer to features for relevant matches.",
+                message=f"Failed to find the raw yara rules '[{','.join(missing_rules)}]'",
             )
 
     def _make_path_absolute(self, parent_rule_path: str, path_str: str) -> Path:
