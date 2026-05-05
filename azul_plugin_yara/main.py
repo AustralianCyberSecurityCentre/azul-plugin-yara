@@ -244,6 +244,21 @@ class AzulPluginYara(BinaryPlugin):
                 message=f"Failed to find the raw yara rules '[{','.join(missing_rules)}]'",
             )
 
+        if (
+            job.event.entity.sha256.lower()
+            == "b6c17d1f205a720186aa61d131ed56cdf4828c1ebd6d2afa398dd0c9774b497d".lower()
+        ):
+            self.logger.warning(self._event_main.features)
+            self.logger.warning("VAL COUNTS")
+            for k, vals in self._event_main.features.items():
+                self.logger.warning(k)
+                self.logger.warning(len(vals))
+
+            self.logger.warning("RAW VALUES PRINT")
+            for k, vals in self._event_main.features.items():
+                self.logger.warning(k)
+                self.logger.warning(vals)
+
     def _make_path_absolute(self, parent_rule_path: str, path_str: str) -> Path:
         """Create an absolute path from a relative or absolute path from a yara include."""
         path = Path(path_str)
