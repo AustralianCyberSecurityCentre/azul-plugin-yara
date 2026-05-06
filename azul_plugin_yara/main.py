@@ -1,6 +1,5 @@
 """Uses yara-x and a configurable ruleset to publish signature hits as AZUL features."""
 
-import base64
 import io
 import logging
 import os
@@ -223,15 +222,6 @@ class AzulPluginYara(BinaryPlugin):
             "yararule_match",
             [FV(val, label=rule, offset=offset, size=len(val)) for rule, offset, _, val in match_tuples],
         )
-
-        if match_tuples:
-            info = {
-                "matches_key": ["rule", "offset", "var", "value"],
-                "matches": [],
-            }
-            # Values must be JSONable - encode raw match bytes to base64
-            info["matches"] = [[r, o, n, base64.b64encode(v).decode("ascii")] for (r, o, n, v) in match_tuples]
-            self.add_info(info)
 
         if not all(found_raw_rule.values()):
             missing_rules = []
