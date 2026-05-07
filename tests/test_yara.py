@@ -233,17 +233,6 @@ class TestYara(test_template.TestPlugin):
                                 )
                             ],
                         },
-                        info={
-                            "matches_key": ["rule", "offset", "var", "value"],
-                            "matches": [
-                                [
-                                    "exploits.CVE313_unclass.Exploit_CVE_2015_0313",
-                                    12,
-                                    "$",
-                                    "ZXhwbG9pdF9wcmltYXJvZGlhbF9maW5pc2go",
-                                ]
-                            ],
-                        },
                     )
                 ],
                 data={
@@ -296,17 +285,6 @@ class TestYara(test_template.TestPlugin):
                                     offset=12,
                                     size=27,
                                 )
-                            ],
-                        },
-                        info={
-                            "matches_key": ["rule", "offset", "var", "value"],
-                            "matches": [
-                                [
-                                    "exploits.CVE313_unclass.Exploit_CVE_2015_0313",
-                                    12,
-                                    "$",
-                                    "ZXhwbG9pdF9wcmltYXJvZGlhbF9maW5pc2go",
-                                ]
                             ],
                         },
                     )
