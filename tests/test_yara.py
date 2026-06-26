@@ -1,5 +1,6 @@
+import tempfile
 import os
-
+from pydantic_core import ValidationError
 from azul_runner import FV, APIFeatureValue, Event, JobResult, State, test_template
 from azul_runner.models import EventData
 
@@ -295,6 +296,95 @@ class TestYara(test_template.TestPlugin):
             ),
             inspect_data=True,
         )
+
+    def test_yara_100_matching_rules(self):
+        """Ensure when there are a 100+ matching rules that ony the first 50 streams are kept.
+
+        This is because the binary ingestor can only process up to 100 streams before it rejects files anyway.
+        """
+        with tempfile.TemporaryDirectory("-yara-test") as temp_rule_dir:
+            for iteration in range(101):
+                raw_rule = (
+                    """rule Exploit_CVE_2015_0313_NewStream%d {
+    meta:
+        rule_group = "Exploit"  
+
+        //required
+        classification = "UNCLASSIFIED"
+        description = "Looks for presence of code that could indicate ANGLER EK use of this flash vuln"
+        exploit = "CVE-2015-0313"
+        info = "SWF"
+        organisation = "Defence"
+        poc = "azul@asd.gov.au" 
+        rule_version = "1"
+        yara_version = "1.6"
+
+        //optional
+        weight = 51
+
+    strings:
+        $ = "take_over_32("
+        $ = "get_x86_shellcode("
+        $ = "exploit_primordial_start("
+        $ = "exploit_primarodial_finish("
+        $ = "this.shellcodes.GetX86Shellcode("
+        $ = "Shellcodes("
+        $ = "attacking_buffer"
+        $ = "take_over_buffer"
+        $ = "make_spray_by_buffers_no_holes"
+        $ = "fake_object_address"
+    condition:
+	any of them
+}"""
+                    % iteration
+                )
+                with open(os.path.join(temp_rule_dir, f"ruleVersion-{iteration}.yara"), "w+") as f:
+                    f.write(raw_rule)
+
+            result = self.do_execution(
+                # This content should hit on the CVE-2015-0313 Angler EK rule in rules
+                data_in=[("content", b'example -> "exploit_primarodial_finish(" <-')],
+                config={
+                    "yara_rules_path": temp_rule_dir,
+                    "version_suffix": "0",
+                    "name_suffix": "0",
+                    "security_override": "OFFICIAL",
+                },
+            )
+            self.assertEqual(len(result.data.keys()), 50, "Must be capping the returned yara hits to 50")
+
+            # If option is overridden the number of streams kept should match that.
+            CONFIGURATION_OVERRIDE_FOR_MAX_YARA_STREAMS = 60
+            result = self.do_execution(
+                # This content should hit on the CVE-2015-0313 Angler EK rule in rules
+                data_in=[("content", b'example -> "exploit_primarodial_finish(" <-')],
+                config={
+                    "yara_rules_path": temp_rule_dir,
+                    "version_suffix": "0",
+                    "name_suffix": "0",
+                    "security_override": "OFFICIAL",
+                    "max_yara_hit_streams_to_keep": CONFIGURATION_OVERRIDE_FOR_MAX_YARA_STREAMS,
+                },
+            )
+            self.assertEqual(
+                len(result.data.keys()),
+                CONFIGURATION_OVERRIDE_FOR_MAX_YARA_STREAMS,
+                f"Must be capping the returned yara hits to {CONFIGURATION_OVERRIDE_FOR_MAX_YARA_STREAMS}",
+            )
+
+            # Fails when attempting to configure a value that must be less than 100.
+            with self.assertRaises(ValidationError):
+                result = self.do_execution(
+                    # This content should hit on the CVE-2015-0313 Angler EK rule in rules
+                    data_in=[("content", b'example -> "exploit_primarodial_finish(" <-')],
+                    config={
+                        "yara_rules_path": temp_rule_dir,
+                        "version_suffix": "0",
+                        "name_suffix": "0",
+                        "security_override": "OFFICIAL",
+                        "max_yara_hit_streams_to_keep": 200,
+                    },
+                )
 
     def test_yara_blacklist(self):
         """Blacklist should filter the only rule."""
