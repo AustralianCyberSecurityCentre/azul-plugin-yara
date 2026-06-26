@@ -6,7 +6,7 @@ import os
 import re
 from hashlib import md5
 from pathlib import Path
-from typing import Any, Optional
+from typing import Annotated, Any, Optional
 
 import yara_x
 from azul_runner import (
@@ -21,6 +21,7 @@ from azul_runner import (
     cmdline_run,
     settings,
 )
+from pydantic import Field
 
 YARA_EXTENSIONS = [".yar", ".yara"]
 
@@ -41,6 +42,8 @@ class AzulPluginYara(BinaryPlugin):
         size_before_disk=(int, 2**24),
         # Max number of yara includes to follow before giving up on looking for rules.
         max_yara_include_depth=(int, 5),
+        # Max number of yara streams to keep before dropping the rest.
+        max_yara_hit_streams_to_keep=(Annotated[int, Field(gt=0, le=100)], 50),
     )
 
     FEATURES = [
@@ -161,6 +164,8 @@ class AzulPluginYara(BinaryPlugin):
         # Read file from disk as multiple seek/read operations will be required
         fpath = job.get_data().get_filepath()
         found_raw_rule = dict()
+
+        yara_rule_streams_added = 0
         for match in matches.matching_rules:
             rule = match.namespace + "." + match.identifier
             self.add_feature_values("yararule", rule)
@@ -176,10 +181,13 @@ class AzulPluginYara(BinaryPlugin):
                 found_raw_rule[rule] = True
                 if new_rule not in seen_rules_md5s:
                     seen_rules_md5s.append(new_rule)
-                    raw_rule_with_header = (
-                        f"// plugin: {self.NAME}, namespace_identifier: {rule}\n".encode() + raw_rule
-                    )
-                    self.add_data(label=DataLabel.YARA_RULE_HIT, tags={}, data=raw_rule_with_header)
+                    # Add the original yara rule that hit as an augmented stream. Stop at max allowed Augmented streams.
+                    if yara_rule_streams_added < self.cfg.max_yara_hit_streams_to_keep:
+                        raw_rule_with_header = (
+                            f"// plugin: {self.NAME}, namespace_identifier: {rule}\n".encode() + raw_rule
+                        )
+                        self.add_data(label=DataLabel.YARA_RULE_HIT, tags={}, data=raw_rule_with_header)
+                        yara_rule_streams_added += 1
 
             for match_data in match.patterns:
                 var = match_data.identifier

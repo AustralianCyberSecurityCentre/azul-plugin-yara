@@ -1,5 +1,6 @@
+import tempfile
 import os
-
+from pydantic_core import ValidationError
 from azul_runner import FV, APIFeatureValue, Event, JobResult, State, test_template
 from azul_runner.models import EventData
 
@@ -296,6 +297,95 @@ class TestYara(test_template.TestPlugin):
             inspect_data=True,
         )
 
+    def test_yara_100_matching_rules(self):
+        """Ensure when there are a 100+ matching rules that ony the first 50 streams are kept.
+
+        This is because the binary ingestor can only process up to 100 streams before it rejects files anyway.
+        """
+        with tempfile.TemporaryDirectory("-yara-test") as temp_rule_dir:
+            for iteration in range(101):
+                raw_rule = (
+                    """rule Exploit_CVE_2015_0313_NewStream%d {
+    meta:
+        rule_group = "Exploit"  
+
+        //required
+        classification = "UNCLASSIFIED"
+        description = "Looks for presence of code that could indicate ANGLER EK use of this flash vuln"
+        exploit = "CVE-2015-0313"
+        info = "SWF"
+        organisation = "Defence"
+        poc = "azul@asd.gov.au" 
+        rule_version = "1"
+        yara_version = "1.6"
+
+        //optional
+        weight = 51
+
+    strings:
+        $ = "take_over_32("
+        $ = "get_x86_shellcode("
+        $ = "exploit_primordial_start("
+        $ = "exploit_primarodial_finish("
+        $ = "this.shellcodes.GetX86Shellcode("
+        $ = "Shellcodes("
+        $ = "attacking_buffer"
+        $ = "take_over_buffer"
+        $ = "make_spray_by_buffers_no_holes"
+        $ = "fake_object_address"
+    condition:
+	any of them
+}"""
+                    % iteration
+                )
+                with open(os.path.join(temp_rule_dir, f"ruleVersion-{iteration}.yara"), "w+") as f:
+                    f.write(raw_rule)
+
+            result = self.do_execution(
+                # This content should hit on the CVE-2015-0313 Angler EK rule in rules
+                data_in=[("content", b'example -> "exploit_primarodial_finish(" <-')],
+                config={
+                    "yara_rules_path": temp_rule_dir,
+                    "version_suffix": "0",
+                    "name_suffix": "0",
+                    "security_override": "OFFICIAL",
+                },
+            )
+            self.assertEqual(len(result.data.keys()), 50, "Must be capping the returned yara hits to 50")
+
+            # If option is overridden the number of streams kept should match that.
+            CONFIGURATION_OVERRIDE_FOR_MAX_YARA_STREAMS = 60
+            result = self.do_execution(
+                # This content should hit on the CVE-2015-0313 Angler EK rule in rules
+                data_in=[("content", b'example -> "exploit_primarodial_finish(" <-')],
+                config={
+                    "yara_rules_path": temp_rule_dir,
+                    "version_suffix": "0",
+                    "name_suffix": "0",
+                    "security_override": "OFFICIAL",
+                    "max_yara_hit_streams_to_keep": CONFIGURATION_OVERRIDE_FOR_MAX_YARA_STREAMS,
+                },
+            )
+            self.assertEqual(
+                len(result.data.keys()),
+                CONFIGURATION_OVERRIDE_FOR_MAX_YARA_STREAMS,
+                f"Must be capping the returned yara hits to {CONFIGURATION_OVERRIDE_FOR_MAX_YARA_STREAMS}",
+            )
+
+            # Fails when attempting to configure a value that must be less than 100.
+            with self.assertRaises(ValidationError):
+                result = self.do_execution(
+                    # This content should hit on the CVE-2015-0313 Angler EK rule in rules
+                    data_in=[("content", b'example -> "exploit_primarodial_finish(" <-')],
+                    config={
+                        "yara_rules_path": temp_rule_dir,
+                        "version_suffix": "0",
+                        "name_suffix": "0",
+                        "security_override": "OFFICIAL",
+                        "max_yara_hit_streams_to_keep": 200,
+                    },
+                )
+
     def test_yara_blacklist(self):
         """Blacklist should filter the only rule."""
         path = os.path.join(os.path.dirname(__file__), rel_rules_dir)
@@ -407,15 +497,15 @@ class TestYara(test_template.TestPlugin):
                         sha256="78f18b9256b3dc9f268fce4b4d20f32329687da45b60fc96ac685ccb221b22aa",
                         data=[
                             EventData(
-                                hash="bdb3c93c261f1ac33b5a3f6f61dfd450b4f00a65125fca3720ff06168d425f28",
+                                hash="2a171168ba538346aedca03c7871a195358d5d043eac7f6bfbab5bc520243c44",
                                 label="yara_rule_hit",
                             ),
                             EventData(
-                                hash="96b56d16a97c86b539fa890ad943bc1020df16dac2644dc6296ab2e094794c71",
+                                hash="47b07e41347363068c32451d938af21f1dd4ac2113ba5e1d8b97eba81c488be9",
                                 label="yara_rule_hit",
                             ),
                             EventData(
-                                hash="7c5f5934f7ba38c37e80ac0605173b896d9f3d7f97945b967d30f06395d6208b",
+                                hash="493580d9da173345d8a93d1780eb463a1315c57fe4d642e72e5576c460a2d7d0",
                                 label="yara_rule_hit",
                             ),
                         ],
@@ -432,9 +522,9 @@ class TestYara(test_template.TestPlugin):
                     )
                 ],
                 data={
-                    "bdb3c93c261f1ac33b5a3f6f61dfd450b4f00a65125fca3720ff06168d425f28": b'// plugin: Yara-0, namespace_identifier: exploits.check_filename.test_filename\nrule test_filename\n{\ncondition:\n    filename startswith "test.exe"\n}\n',
-                    "96b56d16a97c86b539fa890ad943bc1020df16dac2644dc6296ab2e094794c71": b'// plugin: Yara-0, namespace_identifier: exploits.check_filename.test_filepath\nrule test_filepath\n{\ncondition:\n    filepath startswith "/blah/"\n}\n',
-                    "7c5f5934f7ba38c37e80ac0605173b896d9f3d7f97945b967d30f06395d6208b": b'// plugin: Yara-0, namespace_identifier: exploits.check_filename.test_extension\nrule test_extension\n{\ncondition:\n    extension startswith "exe"\n}\n',
+                    "2a171168ba538346aedca03c7871a195358d5d043eac7f6bfbab5bc520243c44": b'// plugin: Yara-0, namespace_identifier: exploits.includes.test_filename\nrule test_filename\n{\ncondition:\n    filename startswith "test.exe"\n}\n',
+                    "47b07e41347363068c32451d938af21f1dd4ac2113ba5e1d8b97eba81c488be9": b'// plugin: Yara-0, namespace_identifier: exploits.includes.test_filepath\nrule test_filepath\n{\ncondition:\n    filepath startswith "/blah/"\n}\n',
+                    "493580d9da173345d8a93d1780eb463a1315c57fe4d642e72e5576c460a2d7d0": b'// plugin: Yara-0, namespace_identifier: exploits.includes.test_extension\nrule test_extension\n{\ncondition:\n    extension startswith "exe"\n}\n',
                 },
             )
         self.assertJobResult(
