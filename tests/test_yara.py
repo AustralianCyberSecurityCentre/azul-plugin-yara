@@ -497,15 +497,15 @@ class TestYara(test_template.TestPlugin):
                         sha256="78f18b9256b3dc9f268fce4b4d20f32329687da45b60fc96ac685ccb221b22aa",
                         data=[
                             EventData(
-                                hash="2a171168ba538346aedca03c7871a195358d5d043eac7f6bfbab5bc520243c44",
+                                hash="bdb3c93c261f1ac33b5a3f6f61dfd450b4f00a65125fca3720ff06168d425f28",
                                 label="yara_rule_hit",
                             ),
                             EventData(
-                                hash="47b07e41347363068c32451d938af21f1dd4ac2113ba5e1d8b97eba81c488be9",
+                                hash="96b56d16a97c86b539fa890ad943bc1020df16dac2644dc6296ab2e094794c71",
                                 label="yara_rule_hit",
                             ),
                             EventData(
-                                hash="493580d9da173345d8a93d1780eb463a1315c57fe4d642e72e5576c460a2d7d0",
+                                hash="7c5f5934f7ba38c37e80ac0605173b896d9f3d7f97945b967d30f06395d6208b",
                                 label="yara_rule_hit",
                             ),
                         ],
@@ -522,9 +522,9 @@ class TestYara(test_template.TestPlugin):
                     )
                 ],
                 data={
-                    "2a171168ba538346aedca03c7871a195358d5d043eac7f6bfbab5bc520243c44": b'// plugin: Yara-0, namespace_identifier: exploits.includes.test_filename\nrule test_filename\n{\ncondition:\n    filename startswith "test.exe"\n}\n',
-                    "47b07e41347363068c32451d938af21f1dd4ac2113ba5e1d8b97eba81c488be9": b'// plugin: Yara-0, namespace_identifier: exploits.includes.test_filepath\nrule test_filepath\n{\ncondition:\n    filepath startswith "/blah/"\n}\n',
-                    "493580d9da173345d8a93d1780eb463a1315c57fe4d642e72e5576c460a2d7d0": b'// plugin: Yara-0, namespace_identifier: exploits.includes.test_extension\nrule test_extension\n{\ncondition:\n    extension startswith "exe"\n}\n',
+                    "bdb3c93c261f1ac33b5a3f6f61dfd450b4f00a65125fca3720ff06168d425f28": b'// plugin: Yara-0, namespace_identifier: exploits.check_filename.test_filename\nrule test_filename\n{\ncondition:\n    filename startswith "test.exe"\n}\n',
+                    "96b56d16a97c86b539fa890ad943bc1020df16dac2644dc6296ab2e094794c71": b'// plugin: Yara-0, namespace_identifier: exploits.check_filename.test_filepath\nrule test_filepath\n{\ncondition:\n    filepath startswith "/blah/"\n}\n',
+                    "7c5f5934f7ba38c37e80ac0605173b896d9f3d7f97945b967d30f06395d6208b": b'// plugin: Yara-0, namespace_identifier: exploits.check_filename.test_extension\nrule test_extension\n{\ncondition:\n    extension startswith "exe"\n}\n',
                 },
             )
         self.assertJobResult(
