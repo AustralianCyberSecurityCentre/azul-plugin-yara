@@ -13,7 +13,7 @@ pip install -e .
 
 ## Usage
 
-Usage on local files:
+Usage on local files: 
 
 ```bash
 azul-plugin-yara -c yara_rules_path tests/rules -c security_override OFFICIAL -c name_suffix a -c version_suffix 2020.12.01 tests/data/test.txt
