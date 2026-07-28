@@ -44,6 +44,7 @@ class AzulPluginYara(BinaryPlugin):
         max_yara_include_depth=(int, 5),
         # Max number of yara streams to keep before dropping the rest.
         max_yara_hit_streams_to_keep=(Annotated[int, Field(gt=0, le=100)], 50),
+        yara_upload_raw_rules_as_streams=(bool, True),
     )
 
     FEATURES = [
@@ -175,23 +176,24 @@ class AzulPluginYara(BinaryPlugin):
             self.add_feature_values("yararule", rule)
             found_raw_rule[rule] = False
 
-            # Find the raw rule and save it as a file
-            rule_file_path = self.namespace_to_rule_path[match.namespace]
-            self.yara_include_depth = 0
-            raw_rule = self.fetch_original_rule(rule_file_path, match.identifier, self.logger)
-            if len(raw_rule) > 0:
-                new_rule = md5(raw_rule).hexdigest()  # noqa: S324
-                # Rule was found
-                found_raw_rule[rule] = True
-                if new_rule not in seen_rules_md5s:
-                    seen_rules_md5s.append(new_rule)
-                    # Add the original yara rule that hit as an augmented stream. Stop at max allowed Augmented streams.
-                    if yara_rule_streams_added < self.cfg.max_yara_hit_streams_to_keep:  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
-                        raw_rule_with_header = (
-                            f"// plugin: {self.NAME}, namespace_identifier: {rule}\n".encode() + raw_rule
-                        )
-                        self.add_data(label=DataLabel.YARA_RULE_HIT, tags={}, data=raw_rule_with_header)
-                        yara_rule_streams_added += 1
+            if self.cfg.yara_upload_raw_rules_as_streams:  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
+                # Find the raw rule and save it as a file
+                rule_file_path = self.namespace_to_rule_path[match.namespace]
+                self.yara_include_depth = 0
+                raw_rule = self.fetch_original_rule(rule_file_path, match.identifier, self.logger)
+                if len(raw_rule) > 0:
+                    new_rule = md5(raw_rule).hexdigest()  # noqa: S324
+                    # Rule was found
+                    found_raw_rule[rule] = True
+                    if new_rule not in seen_rules_md5s:
+                        seen_rules_md5s.append(new_rule)
+                        # Add the original yara rule that hit as an augmented stream. Stop at max allowed Augmented streams.
+                        if yara_rule_streams_added < self.cfg.max_yara_hit_streams_to_keep:  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
+                            raw_rule_with_header = (
+                                f"// plugin: {self.NAME}, namespace_identifier: {rule}\n".encode() + raw_rule
+                            )
+                            self.add_data(label=DataLabel.YARA_RULE_HIT, tags={}, data=raw_rule_with_header)
+                            yara_rule_streams_added += 1
 
             for match_data in match.patterns:
                 var = match_data.identifier
