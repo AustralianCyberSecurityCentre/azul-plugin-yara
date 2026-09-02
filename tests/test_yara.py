@@ -212,7 +212,7 @@ class TestYara(test_template.TestPlugin):
                         sha256="b3c96d09b681a18b41b9eb99c8ccfc97acc432a2721f6dd9676183658a59f375",
                         data=[
                             EventData(
-                                hash="125bb8da4c1b6651bbc35a75b207a48d598b6fe338b6a0026afb1d83e97d0d6d",
+                                hash="77dcb950dc1fea5959395e292b8a9c47c5b35bd7e96411b30c5444db05c6d407",
                                 label="yara_rule_hit",
                             )
                         ],
@@ -237,7 +237,7 @@ class TestYara(test_template.TestPlugin):
                     )
                 ],
                 data={
-                    "125bb8da4c1b6651bbc35a75b207a48d598b6fe338b6a0026afb1d83e97d0d6d": b'// plugin: Yara-0, namespace_identifier: exploits.CVE313_unclass.Exploit_CVE_2015_0313\nrule Exploit_CVE_2015_0313 {\n    meta:\n        rule_group = "Exploit"  \n\n        //required\n        classification = "UNCLASSIFIED"\n        description = "Looks for presence of code that could indicate ANGLER EK use of this flash vuln"\n        exploit = "CVE-2015-0313"\n        info = "SWF"\n        organisation = "Defence"\n        poc = "azul@asd.gov.au" \n        rule_version = "1"\n        yara_version = "1.6"\n\n        //optional\n        weight = 51\n\n    strings:\n        $ = "take_over_32("\n        $ = "get_x86_shellcode("\n        $ = "exploit_primordial_start("\n        $ = "exploit_primarodial_finish("\n        $ = "this.shellcodes.GetX86Shellcode("\n        $ = "Shellcodes("\n        $ = "attacking_buffer"\n        $ = "take_over_buffer"\n        $ = "make_spray_by_buffers_no_holes"\n        $ = "fake_object_address"\n    condition:\n\tany of them\n}\n'
+                    "77dcb950dc1fea5959395e292b8a9c47c5b35bd7e96411b30c5444db05c6d407": b'// plugin: Yara-0, namespace_identifier: exploits.CVE313_unclass.Exploit_CVE_2015_0313\nrule Exploit_CVE_2015_0313 {\n    meta:\n        rule_group = "Exploit"  \n\n        //required\n        classification = "UNCLASSIFIED"\n        description = "Looks for presence of code that could indicate ANGLER EK use of this flash vuln"\n        exploit = "CVE-2015-0313"\n        info = "SWF"\n        organisation = "Defence"\n        poc = "azul@asd.gov.au" \n        rule_version = "1"\n        yara_version = "1.6"\n\n        //optional\n        weight = 51\n\n    strings:\n        $ = "take_over_32("\n        $ = "get_x86_shellcode("\n        $ = "exploit_primordial_start("\n        $ = "exploit_primarodial_finish("\n        $ = "this.shellcodes.GetX86Shellcode("\n        $ = "Shellcodes("\n        $ = "attacking_buffer"\n        $ = "take_over_buffer"\n        $ = "make_spray_by_buffers_no_holes"\n        $ = "fake_object_address"\n        $hiddenPrivateStringEncoded = { \n            65 78 70 6c 6f 69 74 5f 70 72 69 6d 61 72 6f 64 69 61 6c 5f 66 69 6e 69 73 68 28 \n            } private\n        $hiddenPrivateString = "exploit_primarodial_finish" private\n    condition:\n\tany of them\n}\n'
                 },
             ),
             inspect_data=True,
@@ -266,7 +266,7 @@ class TestYara(test_template.TestPlugin):
                         sha256="b3c96d09b681a18b41b9eb99c8ccfc97acc432a2721f6dd9676183658a59f375",
                         data=[
                             EventData(
-                                hash="125bb8da4c1b6651bbc35a75b207a48d598b6fe338b6a0026afb1d83e97d0d6d",
+                                hash="77dcb950dc1fea5959395e292b8a9c47c5b35bd7e96411b30c5444db05c6d407",
                                 label="yara_rule_hit",
                             )
                         ],
@@ -291,7 +291,7 @@ class TestYara(test_template.TestPlugin):
                     )
                 ],
                 data={
-                    "125bb8da4c1b6651bbc35a75b207a48d598b6fe338b6a0026afb1d83e97d0d6d": b'// plugin: Yara-0, namespace_identifier: exploits.CVE313_unclass.Exploit_CVE_2015_0313\nrule Exploit_CVE_2015_0313 {\n    meta:\n        rule_group = "Exploit"  \n\n        //required\n        classification = "UNCLASSIFIED"\n        description = "Looks for presence of code that could indicate ANGLER EK use of this flash vuln"\n        exploit = "CVE-2015-0313"\n        info = "SWF"\n        organisation = "Defence"\n        poc = "azul@asd.gov.au" \n        rule_version = "1"\n        yara_version = "1.6"\n\n        //optional\n        weight = 51\n\n    strings:\n        $ = "take_over_32("\n        $ = "get_x86_shellcode("\n        $ = "exploit_primordial_start("\n        $ = "exploit_primarodial_finish("\n        $ = "this.shellcodes.GetX86Shellcode("\n        $ = "Shellcodes("\n        $ = "attacking_buffer"\n        $ = "take_over_buffer"\n        $ = "make_spray_by_buffers_no_holes"\n        $ = "fake_object_address"\n    condition:\n\tany of them\n}\n'
+                    "77dcb950dc1fea5959395e292b8a9c47c5b35bd7e96411b30c5444db05c6d407": b'// plugin: Yara-0, namespace_identifier: exploits.CVE313_unclass.Exploit_CVE_2015_0313\nrule Exploit_CVE_2015_0313 {\n    meta:\n        rule_group = "Exploit"  \n\n        //required\n        classification = "UNCLASSIFIED"\n        description = "Looks for presence of code that could indicate ANGLER EK use of this flash vuln"\n        exploit = "CVE-2015-0313"\n        info = "SWF"\n        organisation = "Defence"\n        poc = "azul@asd.gov.au" \n        rule_version = "1"\n        yara_version = "1.6"\n\n        //optional\n        weight = 51\n\n    strings:\n        $ = "take_over_32("\n        $ = "get_x86_shellcode("\n        $ = "exploit_primordial_start("\n        $ = "exploit_primarodial_finish("\n        $ = "this.shellcodes.GetX86Shellcode("\n        $ = "Shellcodes("\n        $ = "attacking_buffer"\n        $ = "take_over_buffer"\n        $ = "make_spray_by_buffers_no_holes"\n        $ = "fake_object_address"\n        $hiddenPrivateStringEncoded = { \n            65 78 70 6c 6f 69 74 5f 70 72 69 6d 61 72 6f 64 69 61 6c 5f 66 69 6e 69 73 68 28 \n            } private\n        $hiddenPrivateString = "exploit_primarodial_finish" private\n    condition:\n\tany of them\n}\n'
                 },
             ),
             inspect_data=True,
