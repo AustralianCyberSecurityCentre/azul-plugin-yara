@@ -339,7 +339,7 @@ def construct_yara_x_compiler(list_rules: dict[str, str], logger: logging.Logger
     compiler.define_global("extension", "")
     compiler.define_global("filetype", "")
 
-    number_of_errors = 0
+    successful_compilations = 0
 
     for ns, val in list_rules.items():
         try:
@@ -359,6 +359,7 @@ def construct_yara_x_compiler(list_rules: dict[str, str], logger: logging.Logger
                     else:
                         temp_lines.append(f_line)
                 compiler.add_source("\n".join(temp_lines))
+                successful_compilations += 1
         except Exception as err:
             logger.warning(
                 "Failed compiling YARA rule file '%s' in namespace '%s': %s",
@@ -366,11 +367,10 @@ def construct_yara_x_compiler(list_rules: dict[str, str], logger: logging.Logger
                 ns,
                 err,
             )
-            number_of_errors += 1
             continue
 
     # No compiled rule just Raise
-    if number_of_errors == len(list_rules):
+    if successful_compilations < 1:
         raise Exception("No yara rules compiled.")
 
     return compiler
