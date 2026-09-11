@@ -606,7 +606,7 @@ class TestYara(test_template.TestPlugin):
             expected_result,
             inspect_data=True,
         )
-    
+
     def test_compilation_error_does_not_prevent_loading_other_rules(self):
         with tempfile.TemporaryDirectory("-yara-test") as temp_rule_dir:
             # Invalid YARA
@@ -655,14 +655,46 @@ class TestYara(test_template.TestPlugin):
 
             yararules = []
             for event in result.events:
-                yararules.extend(
-                    [
-                        x.value
-                        for x in event.features.get("yararule", [])
-                    ]
-                )
+                yararules.extend([x.value for x in event.features.get("yararule", [])])
 
             self.assertIn("good.GoodRule", yararules)
+
+    def test_all_compilation_errors_raise_exception(self):
+        with tempfile.TemporaryDirectory("-yara-test") as temp_rule_dir:
+            with open(os.path.join(temp_rule_dir, "broken1.yara"), "w") as f:
+                f.write(
+                    """
+                    rule BrokenRule1
+                    {
+                        condition:
+                            this is not valid yara syntax
+                    }
+                    """
+                )
+
+            with open(os.path.join(temp_rule_dir, "broken2.yara"), "w") as f:
+                f.write(
+                    """
+                    rule BrokenRule2
+                    {
+                        condition:
+                            also not valid yara syntax
+                    }
+                    """
+                )
+
+            self.assertRaisesRegex(
+                Exception,
+                "No yara rules compiled.",
+                self.do_execution,
+                data_in=[("content", b"test content")],
+                config={
+                    "yara_rules_path": temp_rule_dir,
+                    "version_suffix": "0",
+                    "name_suffix": "0",
+                    "security_override": "OFFICIAL",
+                },
+            )
 
     def test_import_rules_list_regex(self):
         """Test list of regex."""
