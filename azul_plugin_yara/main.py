@@ -339,23 +339,40 @@ def construct_yara_x_compiler(list_rules: dict[str, str], logger: logging.Logger
     compiler.define_global("extension", "")
     compiler.define_global("filetype", "")
 
-    for ns, val in list_rules.items():
-        with open(file=val, mode="r") as file:
-            compiler.new_namespace(ns)
-            # Setup variables for replace_include
-            file_dirname = os.path.dirname(val)
-            temp_lines: list[str] = []
-            f_lines = file.readlines()
-            processed_files: set[str] = set()
+    successful_compilations = 0
 
-            for _, f_line in enumerate(f_lines):
-                if f_line.startswith("include"):
-                    # Check and replace includes
-                    lines, processed_files = replace_include(f_line, file_dirname, processed_files, logger)
-                    temp_lines.extend(lines)
-                else:
-                    temp_lines.append(f_line)
-            compiler.add_source("\n".join(temp_lines))
+    for ns, val in list_rules.items():
+        try:
+            with open(file=val, mode="r") as file:
+                compiler.new_namespace(ns)
+                # Setup variables for replace_include
+                file_dirname = os.path.dirname(val)
+                temp_lines: list[str] = []
+                f_lines = file.readlines()
+                processed_files: set[str] = set()
+
+                for _, f_line in enumerate(f_lines):
+                    if f_line.startswith("include"):
+                        # Check and replace includes
+                        lines, processed_files = replace_include(f_line, file_dirname, processed_files, logger)
+                        temp_lines.extend(lines)
+                    else:
+                        temp_lines.append(f_line)
+                compiler.add_source("\n".join(temp_lines))
+                successful_compilations += 1
+        except Exception as err:
+            logger.warning(
+                "Failed compiling YARA rule file '%s' in namespace '%s': %s",
+                val,
+                ns,
+                err,
+            )
+            continue
+
+    # No compiled rule just Raise
+    if successful_compilations < 1:
+        raise Exception("No yara rules compiled.")
+
     return compiler
 
 
