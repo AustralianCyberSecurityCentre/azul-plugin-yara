@@ -606,6 +606,63 @@ class TestYara(test_template.TestPlugin):
             expected_result,
             inspect_data=True,
         )
+    
+    def test_compilation_error_does_not_prevent_loading_other_rules(self):
+        with tempfile.TemporaryDirectory("-yara-test") as temp_rule_dir:
+            # Invalid YARA
+            with open(os.path.join(temp_rule_dir, "broken.yara"), "w") as f:
+                f.write(
+                    """
+                    rule BrokenRule
+                    {
+                        strings:
+                            $a = "abc"
+                        condition:
+                            this is not valid yara syntax
+                    }
+                    """
+                )
+
+            # Valid YARA
+            with open(os.path.join(temp_rule_dir, "good.yara"), "w") as f:
+                f.write(
+                    """
+                    rule GoodRule
+                    {
+                        strings:
+                            $a = "needle"
+
+                        condition:
+                            $a
+                    }
+                    """
+                )
+
+            result = self.do_execution(
+                data_in=[("content", b"this file contains needle")],
+                config={
+                    "yara_rules_path": temp_rule_dir,
+                    "version_suffix": "0",
+                    "name_suffix": "0",
+                    "security_override": "OFFICIAL",
+                },
+            )
+
+            self.assertEqual(
+                result.state.label,
+                State.Label.COMPLETED,
+            )
+
+            yararules = []
+            for event in result.events:
+                yararules.extend(
+                    [
+                        x.value
+                        for x in event.features.get("yararule", [])
+                    ]
+                )
+
+            self.assertIn("good.GoodRule", yararules)
 
     def test_import_rules_list_regex(self):
         """Test list of regex."""
