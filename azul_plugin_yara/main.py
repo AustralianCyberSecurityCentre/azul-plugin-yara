@@ -155,11 +155,12 @@ class AzulPluginYara(BinaryPlugin):
         scanner.set_global("extension", ext)
         scanner.set_global("filetype", ftype)
         # if binary over certain size, write to disk first
+
         if job.event.entity.size > self.cfg.size_before_disk:  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
             matches = scanner.scan_file(job.get_data().get_filepath())  # type: yara_x.ScanResults
         else:
             matches = scanner.scan(job.get_data().read())  # type: yara_x.ScanResults
-        if not matches:
+        if not matches:  # ty: ignore[redundant-condition]
             return State.Label.COMPLETED
 
         # Get yararule features.
