@@ -163,7 +163,7 @@ class AzulPluginYara(BinaryPlugin):
                 matches = scanner.scan(job.get_data().read())  # type: yara_x.ScanResults
         except Exception as e:
             self.logger.exception("YARA scan failed")
-            return State(State.Label.COMPLETED_WITH_ERRORS, message=f"YARA scan failure: {e}")
+            return State(State.Label.ERROR_EXCEPTION, message=f"YARA scan failure: {e}")
 
         if not matches:  # ty: ignore[redundant-condition]
             return State.Label.COMPLETED
