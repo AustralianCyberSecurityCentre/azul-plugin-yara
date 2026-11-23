@@ -97,19 +97,19 @@ class AzulPluginYara(BinaryPlugin):
     def __init__(self, config: settings.Settings | dict | None = None) -> None:
         """Check correct config and load/cache rules."""
         super().__init__(config)
-        if not self.cfg.yara_rules_path or not self.cfg.name_suffix or not self.cfg.version_suffix:  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
+        if not self.cfg.yara_rules_path or not self.cfg.name_suffix or not self.cfg.version_suffix:  # ty: ignore[missing-attribute] ty doesn't understand add_settings
             raise Exception("Plugin requires 'yara_rules_path', 'name_suffix' and 'version_suffix' config to be set")
 
         if not self.cfg.security_override:
             raise Exception("Plugin requires 'security_override' to be defined")
 
         # handle config override with env string
-        blacklist = self.cfg.yara_namespace_blacklist  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
+        blacklist = self.cfg.yara_namespace_blacklist  # ty: ignore[missing-attribute] ty doesn't understand add_settings
         if isinstance(blacklist, str):
             blacklist = blacklist.split(",")
 
         # Handle a list of regex to only load certain file types
-        yara_file_to_load_regex = self.cfg.yara_only_load_files_named  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
+        yara_file_to_load_regex = self.cfg.yara_only_load_files_named  # ty: ignore[missing-attribute] ty doesn't understand add_settings
         if isinstance(yara_file_to_load_regex, list) and len(yara_file_to_load_regex) > 0:
             yara_file_to_load_regex = [re.compile(expression) for expression in yara_file_to_load_regex]
         elif isinstance(yara_file_to_load_regex, str):
@@ -118,12 +118,12 @@ class AzulPluginYara(BinaryPlugin):
             yara_file_to_load_regex = None
 
         self.namespace_to_rule_path: dict[str, str] = list_rules(
-            self.cfg.yara_rules_path,  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
+            self.cfg.yara_rules_path,  # ty: ignore[missing-attribute] ty doesn't understand add_settings
             blacklist,
             yara_file_to_load_regex,
         )
         if not self.namespace_to_rule_path:
-            raise Exception("No yara rules found in %s path" % self.cfg.yara_rules_path)  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
+            raise Exception("No yara rules found in %s path" % self.cfg.yara_rules_path)  # ty: ignore[missing-attribute] ty doesn't understand add_settings
 
         self.logger.info(f"Loaded {len(self.namespace_to_rule_path)} files containing yara rules.")
         if len(self.namespace_to_rule_path) < 20:
@@ -157,7 +157,7 @@ class AzulPluginYara(BinaryPlugin):
         # if binary over certain size, write to disk first
 
         try:
-            if job.event.entity.size > self.cfg.size_before_disk:  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
+            if job.event.entity.size > self.cfg.size_before_disk:  # ty: ignore[missing-attribute] ty doesn't understand add_settings
                 matches = scanner.scan_file(job.get_data().get_filepath())  # type: yara_x.ScanResults
             else:
                 matches = scanner.scan(job.get_data().read())  # type: yara_x.ScanResults
@@ -182,7 +182,7 @@ class AzulPluginYara(BinaryPlugin):
             self.add_feature_values("yararule", rule)
             found_raw_rule[rule] = False
 
-            if self.cfg.yara_upload_raw_rules_as_streams:  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
+            if self.cfg.yara_upload_raw_rules_as_streams:  # ty: ignore[missing-attribute] ty doesn't understand add_settings
                 # Find the raw rule and save it as a file
                 rule_file_path = self.namespace_to_rule_path[match.namespace]
                 self.yara_include_depth = 0
@@ -194,7 +194,7 @@ class AzulPluginYara(BinaryPlugin):
                     if new_rule not in seen_rules_md5s:
                         seen_rules_md5s.append(new_rule)
                         # Add the original yara rule that hit as an augmented stream. Stop at max allowed Augmented streams.
-                        if yara_rule_streams_added < self.cfg.max_yara_hit_streams_to_keep:  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
+                        if yara_rule_streams_added < self.cfg.max_yara_hit_streams_to_keep:  # ty: ignore[missing-attribute] ty doesn't understand add_settings
                             raw_rule_with_header = (
                                 f"// plugin: {self.NAME}, namespace_identifier: {rule}\n".encode() + raw_rule
                             )
@@ -314,7 +314,7 @@ class AzulPluginYara(BinaryPlugin):
         if not start_of_rule:
             # Ensure recursive yara includes don't end in an infinite loop
             self.yara_include_depth += 1
-            if self.yara_include_depth >= self.cfg.max_yara_include_depth:  # ty: ignore[unresolved-attribute] ty doesn't understand add_settings
+            if self.yara_include_depth >= self.cfg.max_yara_include_depth:  # ty: ignore[missing-attribute] ty doesn't understand add_settings
                 return b""
             # Search included yara files.
             for included_path in included_yara_rule_paths:
